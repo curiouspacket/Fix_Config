@@ -1,0 +1,35 @@
+---
+ - hosts: all
+   gather_facts: false
+   tasks:
+    - name: Configure SNMP No Public
+      ios_config:
+       lines:
+        - snmp-server community String RO
+        - snmp-server host X.X.X.X String
+        - no snmp-server community public RO
+        - no snmp-server host X.X.X.X public
+    - name: Save Config
+      ios_config:
+       save_when: modified
+      register: output
+    - name: DEBUG >> output
+      debug:
+        msg: "{{ output }}"
+    - name: Verification
+      ios_command:
+        commands:
+         - show startup-config | s snmp
+      register: cmd_output
+    - name: Verification Output
+      debug: 
+        msg: "{{ cmd_output.stdout }}"
+    - copy:
+        content: |
+            Logging changes to SNMP
+            {% for host in groups['remote-sites'] %}
+            {{ hostvars[host].cmd_output }}\n
+            {% endfor %}
+        dest: "/tmp/security_comp_fixlog.txt"
+      delegate_to: localhost
+      run_once: true
